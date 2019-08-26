@@ -53,8 +53,8 @@ jobs:
         PROJECT_ID: fifth-byte-211221
       with:
         entrypoint: sh
-        args: -l -c "SHORT_REF=$(echo ${GITHUB_SHA} | head -c7) && cat ${{ github.workspace
-          }}/config.yml | sed 's/PROJECT_ID/'\"$PROJECT_ID\"'/' | sed 's/APPLICATION_NAME/'\"$APPLICATION_NAME\"'/'
+        args: -l -c "SHORT_REF=$(echo ${GITHUB_SHA} | head -c7) && cat $GITHUB_WORKSPACE/config.yml 
+          | sed 's/PROJECT_ID/'\"$PROJECT_ID\"'/' | sed 's/APPLICATION_NAME/'\"$APPLICATION_NAME\"'/'
           | sed 's/TAG/'\"$SHORT_REF\"'/' | kubectl apply -f - "
     - name: Verify GKE deployment
       uses: docker://gcr.io/cloud-builders/kubectl
