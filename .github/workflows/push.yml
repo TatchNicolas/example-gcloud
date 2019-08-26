@@ -1,0 +1,64 @@
+on: push
+name: Build and Deploy
+jobs:
+  buildDockerImage:
+    name: Build Docker image
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@master
+    - name: Build Docker image
+      uses: actions/docker/cli@master
+      with:
+        args: build -t gcloud-example-app .
+    - name: Tag image for GCR
+      uses: actions/docker/tag@master
+      env:
+        APPLICATION_NAME: gcloud-example-app
+        PROJECT_ID: fifth-byte-211221
+      with:
+        args: gcloud-example-app gcr.io/$PROJECT_ID/$APPLICATION_NAME
+    - name: Set Credential Helper for Docker
+      uses: actions/gcloud/cli@master
+      with:
+        args: auth configure-docker --quiet
+    - name: Deploy branch filter
+      uses: actions/bin/filter@master
+      with:
+        args: branch master
+    - name: Setup Google Cloud
+      uses: actions/gcloud/auth@master
+      env:
+        GCLOUD_AUTH: ${{ secrets.GCLOUD_AUTH }}
+    - name: Load GKE kube credentials
+      uses: actions/gcloud/cli@master
+      env:
+        CLUSTER_NAME: workflow-example-cluster
+        PROJECT_ID: fifth-byte-211221
+      with:
+        args: container clusters get-credentials $CLUSTER_NAME --zone us-central1-a
+          --project $PROJECT_ID
+    - name: Push image to GCR
+      uses: actions/gcloud/cli@master
+      env:
+        APPLICATION_NAME: gcloud-example-app
+        PROJECT_ID: fifth-byte-211221
+      with:
+        entrypoint: sh
+        args: -c "docker push gcr.io/$PROJECT_ID/$APPLICATION_NAME"
+    - name: Deploy to GKE
+      uses: docker://gcr.io/cloud-builders/kubectl
+      env:
+        APPLICATION_NAME: gcloud-example-app
+        DEPLOYMENT_NAME: app-example
+        PROJECT_ID: fifth-byte-211221
+      with:
+        entrypoint: sh
+        args: -l -c "SHORT_REF=$(echo ${GITHUB_SHA} | head -c7) && cat ${{ github.workspace
+          }}/config.yml | sed 's/PROJECT_ID/'\"$PROJECT_ID\"'/' | sed 's/APPLICATION_NAME/'\"$APPLICATION_NAME\"'/'
+          | sed 's/TAG/'\"$SHORT_REF\"'/' | kubectl apply -f - "
+    - name: Verify GKE deployment
+      uses: docker://gcr.io/cloud-builders/kubectl
+      env:
+        DEPLOYMENT_NAME: app-example
+      with:
+        args: rollout status deployment/app-example
