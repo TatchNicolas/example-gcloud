@@ -53,12 +53,15 @@ jobs:
         PROJECT_ID: fifth-byte-211221
       with:
         entrypoint: sh
-        args: -l -c "SHORT_REF=$(echo ${GITHUB_SHA} | head -c7) && cat $GITHUB_WORKSPACE/config.yml 
+        args: -l -c "SHORT_REF=$(echo ${GITHUB_SHA} | head -c7) && cat $GITHUB_WORKSPACE/config.yml
           | sed 's/PROJECT_ID/'\"$PROJECT_ID\"'/' | sed 's/APPLICATION_NAME/'\"$APPLICATION_NAME\"'/'
           | sed 's/TAG/'\"$SHORT_REF\"'/' | kubectl apply -f - "
     - name: Verify GKE deployment
       uses: docker://gcr.io/cloud-builders/kubectl
       env:
+        CLOUDSDK_CORE_PROJECT: fifth-byte-211221
+        CLOUDSDK_COMPUTE_ZONE: us-central1-a
+        CLOUDSDK_CONTAINER_CLUSTER: workflow-example-cluster
         DEPLOYMENT_NAME: app-example
       with:
         args: rollout status deployment/app-example
